@@ -1,0 +1,8 @@
+{
+  "name": "Autonomous Energy Materials Lab",
+  "description": "Autonomous materials discovery protocol with high-throughput nanoparticle synthesis and characterization simulation.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
