@@ -1,3 +1,5 @@
+***This project is not yet optimized to be viewed on a mobile phone. It is best viewed on a desktop computer for this moment.***
+
 # Autonomous Energy Materials Lab
 
 Autonomous materials discovery protocol with high-throughput nanoparticle synthesis and characterization simulation. Rewritten as a modern React SPA using TypeScript, Vite, and Tailwind CSS.
