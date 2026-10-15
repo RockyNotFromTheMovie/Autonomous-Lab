@@ -7,7 +7,7 @@ import { ResultsPanel } from './components/ResultsPanel';
 import { ExperimentDetailModal } from './components/ExperimentDetailModal';
 import { ElementData, AIPlan, ExperimentRecord, LogMessage, SimStage, ExperimentOutcome } from './types';
 import { STANDARD_ELEMENTS } from './data/standardElements';
-import { generateAIPlan } from './services/aiMaterialsService';
+import { generateAIPlan, generateOutcomeExplanation } from './services/aiMaterialsService';
 
 const STORAGE_KEY = 'autonomous_materials_lab_experiments_v2';
 
@@ -28,6 +28,7 @@ const SEED_RECORDS: ExperimentRecord[] = [
     synthesisPlan: '1. Ball milling elemental powders with 1 wt% stearic acid.\n2. Spark plasma sintering at 1250°C under 30 MPa uniaxial pressure.\n3. Post-synthesis rapid thermal quenching.',
     characterizationPlan: '1. XRF mapping stoichiometry Ti:Al:C ratio.\n2. SEM micrographs of laminated nanolayers showing basal plane sliding.',
     outcome: 'Partial Success',
+    explanation: 'Partial phase decomposition observed: secondary TiC phase formed at grain boundaries due to non-stoichiometric carbon diffusion during sintering.',
     timestamp: Date.now() - 3600000 * 5,
   }
 ];
@@ -45,6 +46,9 @@ export const App: React.FC = () => {
   const [simStage, setSimStage] = useState<SimStage>('idle');
   const [simProgress, setSimProgress] = useState(0);
   const [simOutcome, setSimOutcome] = useState<ExperimentOutcome | null>(null);
+  const [simExplanation, setSimExplanation] = useState<string>('');
+  const [lastCreatedRecordId, setLastCreatedRecordId] = useState<string | null>(null);
+  const [isExplanationSaved, setIsExplanationSaved] = useState<boolean>(false);
 
   const [records, setRecords] = useState<ExperimentRecord[]>(() => {
     try {
@@ -126,6 +130,17 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleDeselectAll = () => {
+    if (selectedElements.length === 0) return;
+    setSelectedElements([]);
+    addLog('Deselected all elements.', 'info');
+  };
+
+  const handleDeselectElement = (element: ElementData) => {
+    setSelectedElements((prev) => prev.filter((e) => e.Symbol !== element.Symbol));
+    addLog(`Deselected element ${element.Symbol} (${element.Name})`);
+  };
+
   const handleDesignPlan = async () => {
     if (selectedElements.length < 2 || selectedElements.length > 5) {
       addLog('Selection error: You must select 2 to 5 elements.', 'error');
@@ -143,6 +158,29 @@ export const App: React.FC = () => {
       addLog(`LLM Error: ${err.message || 'Generation failed'}`, 'error');
     } finally {
       setIsDesigning(false);
+    }
+  };
+
+  const handleUpdateExplanation = (recordId: string, newExplanation: string) => {
+    setRecords((prev) =>
+      prev.map((rec) =>
+        rec.id === recordId ? { ...rec, explanation: newExplanation } : rec
+      )
+    );
+    setSelectedModalRecord((prev) =>
+      prev && prev.id === recordId ? { ...prev, explanation: newExplanation } : prev
+    );
+    if (lastCreatedRecordId === recordId) {
+      setSimExplanation(newExplanation);
+    }
+    addLog(`Updated outcome explanation for run.`, 'info');
+  };
+
+  const handleSaveCurrentExplanation = () => {
+    if (lastCreatedRecordId) {
+      handleUpdateExplanation(lastCreatedRecordId, simExplanation);
+      setIsExplanationSaved(true);
+      setTimeout(() => setIsExplanationSaved(false), 2500);
     }
   };
 
@@ -179,6 +217,17 @@ export const App: React.FC = () => {
     setSimOutcome(finalOutcome);
     setSimStage('completed');
 
+    let initialExplanation = '';
+    if (finalOutcome === 'Partial Success' || finalOutcome === 'Failure') {
+      initialExplanation = generateOutcomeExplanation(
+        finalOutcome,
+        selectedElements,
+        currentPlan.alloyName
+      );
+    }
+    setSimExplanation(initialExplanation);
+    setIsExplanationSaved(false);
+
     if (finalOutcome === 'Success') {
       confetti({
         particleCount: 50,
@@ -197,17 +246,20 @@ export const App: React.FC = () => {
     addLog(`Hardware returned status: ${finalOutcome}`, logType);
 
     // Save record
+    const newRecordId = `exp-${Date.now()}`;
     const newRecord: ExperimentRecord = {
-      id: `exp-${Date.now()}`,
+      id: newRecordId,
       alloyName: currentPlan.alloyName,
       elements: selectedElements.map((e) => e.Symbol).join(', '),
       selectedElements,
       synthesisPlan: currentPlan.synthesisPlan,
       characterizationPlan: currentPlan.characterizationPlan,
       outcome: finalOutcome,
+      explanation: initialExplanation,
       timestamp: Date.now(),
     };
 
+    setLastCreatedRecordId(newRecordId);
     setRecords((prev) => [newRecord, ...prev]);
     addLog('Record synchronized to database.', 'info');
   };
@@ -217,6 +269,9 @@ export const App: React.FC = () => {
     setSimStage('idle');
     setSimProgress(0);
     setSimOutcome(null);
+    setSimExplanation('');
+    setLastCreatedRecordId(null);
+    setIsExplanationSaved(false);
     addLog('Ready for new synthesis parameters.', 'info');
   };
 
@@ -240,6 +295,8 @@ export const App: React.FC = () => {
           onElementsLoaded={handleElementsLoaded}
           selectedElements={selectedElements}
           onToggleElement={handleToggleElement}
+          onDeselectAll={handleDeselectAll}
+          onDeselectElement={handleDeselectElement}
           onDesignPlan={handleDesignPlan}
           isDesigning={isDesigning}
           onLog={addLog}
@@ -252,6 +309,10 @@ export const App: React.FC = () => {
           simStage={simStage}
           simProgress={simProgress}
           simOutcome={simOutcome}
+          simExplanation={simExplanation}
+          onExplanationChange={setSimExplanation}
+          onSaveExplanation={handleSaveCurrentExplanation}
+          isExplanationSaved={isExplanationSaved}
           onExecuteExperiment={handleExecuteExperiment}
           onResetWorkflow={handleResetWorkflow}
           logs={logs}
@@ -271,6 +332,7 @@ export const App: React.FC = () => {
       <ExperimentDetailModal
         record={selectedModalRecord}
         onClose={() => setSelectedModalRecord(null)}
+        onUpdateExplanation={handleUpdateExplanation}
       />
     </div>
   );

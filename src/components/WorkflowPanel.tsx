@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Bot,
   Network,
@@ -13,6 +13,10 @@ import {
   RotateCcw,
   Terminal,
   Trash2,
+  FileText,
+  Save,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import { ElementData, AIPlan, SimStage, ExperimentOutcome, LogMessage } from '../types';
 
@@ -22,11 +26,29 @@ interface WorkflowPanelProps {
   simStage: SimStage;
   simProgress: number;
   simOutcome: ExperimentOutcome | null;
+  simExplanation: string;
+  onExplanationChange: (explanation: string) => void;
+  onSaveExplanation: () => void;
+  isExplanationSaved: boolean;
   onExecuteExperiment: () => void;
   onResetWorkflow: () => void;
   logs: LogMessage[];
   onClearLogs: () => void;
 }
+
+const PARTIAL_PRESETS = [
+  'Phase Segregation: Secondary intermetallic cluster formation along grain boundaries.',
+  'Stoichiometry Drift: Micro-XRF identified ±4.5 at% variance across deposition swath.',
+  'Residual Porosity: 88% theoretical density reached; minor interface voids present.',
+  'Metastable Boundary: Core-shell microstructure retained post flash annealing.',
+];
+
+const FAILURE_PRESETS = [
+  'Thermal Shock Delamination: Severe micro-cracking and film peeling from substrate.',
+  'Phase Immiscibility: High positive mixing enthalpy prevented solid solution formation.',
+  'Precursor Agglomeration: Nozzle clogging caused non-uniform island growth.',
+  'Interfacial Oxidation: Inert shroud breach caused spontaneous metal oxide skins.',
+];
 
 export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
   currentPlan,
@@ -34,6 +56,10 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
   simStage,
   simProgress,
   simOutcome,
+  simExplanation,
+  onExplanationChange,
+  onSaveExplanation,
+  isExplanationSaved,
   onExecuteExperiment,
   onResetWorkflow,
   logs,
@@ -60,6 +86,9 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
     }
     return 'opacity-0';
   };
+
+  const isPartialOrFailure =
+    simOutcome === 'Partial Success' || simOutcome === 'Failure';
 
   return (
     <div className="col-span-1 md:col-span-4 glass-panel rounded-xl flex flex-col overflow-hidden shadow-lg border border-slate-700/50 relative">
@@ -207,31 +236,103 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
 
         {/* Case 4: Simulation complete */}
         {simStage === 'completed' && simOutcome && (
-          <div className="flex flex-col items-center justify-center h-full text-center animate-fadeIn py-4">
-            <div className="mb-4">
-              {simOutcome === 'Success' && (
-                <CheckCircle2 className="w-16 h-16 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]" />
-              )}
-              {simOutcome === 'Partial Success' && (
-                <AlertTriangle className="w-16 h-16 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
-              )}
-              {simOutcome === 'Failure' && (
-                <XCircle className="w-16 h-16 text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]" />
-              )}
+          <div className="flex flex-col items-center justify-start min-h-full text-center animate-fadeIn py-2 space-y-4">
+            <div className="flex flex-col items-center">
+              <div className="mb-2">
+                {simOutcome === 'Success' && (
+                  <CheckCircle2 className="w-14 h-14 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.5)]" />
+                )}
+                {simOutcome === 'Partial Success' && (
+                  <AlertTriangle className="w-14 h-14 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]" />
+                )}
+                {simOutcome === 'Failure' && (
+                  <XCircle className="w-14 h-14 text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]" />
+                )}
+              </div>
+
+              <h3 className="text-xl font-bold text-white mb-0.5">
+                {simOutcome}
+              </h3>
+              <p className="text-xs text-slate-400 max-w-xs">
+                {simOutcome === 'Success'
+                  ? 'Experiment concluded successfully. Homogeneous alloy synthesized.'
+                  : 'Experiment concluded with diagnostic flags. Record saved to database.'}
+              </p>
             </div>
 
-            <h3 className="text-2xl font-bold text-white mb-1">
-              {simOutcome}
-            </h3>
-            <p className="text-xs text-slate-400 mb-6 max-w-xs">
-              Experiment concluded. Protocol and telemetry synchronized to database.
-            </p>
+            {/* Explanation Input for Partial Success or Failure */}
+            {isPartialOrFailure && (
+              <div
+                className={`w-full text-left rounded-xl p-3.5 border transition-all ${
+                  simOutcome === 'Partial Success'
+                    ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                    : 'bg-red-950/20 border-red-500/40 text-red-200'
+                }`}
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-1.5 font-semibold text-xs">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Explanation of Outcome ({simOutcome}):</span>
+                  </div>
+                  {isExplanationSaved && (
+                    <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Saved
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+                  Provide or refine the laboratory diagnostic root cause for why this run resulted in {simOutcome.toLowerCase()}:
+                </p>
+
+                <textarea
+                  value={simExplanation}
+                  onChange={(e) => onExplanationChange(e.target.value)}
+                  placeholder={`Input explanation for ${simOutcome.toLowerCase()} (e.g. phase separation, thermal delamination, stoichiometry variance)...`}
+                  rows={3}
+                  className="w-full bg-slate-900/90 text-xs text-white rounded-lg p-2.5 border border-slate-700 focus:outline-none focus:border-[#38bdf8] resize-none font-sans leading-relaxed"
+                />
+
+                {/* Quick Presets */}
+                <div className="mt-2.5">
+                  <span className="text-[10px] text-slate-400 uppercase font-mono block mb-1">
+                    Quick Suggestion Presets:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(simOutcome === 'Partial Success' ? PARTIAL_PRESETS : FAILURE_PRESETS).map(
+                      (preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => onExplanationChange(preset)}
+                          className="text-[10px] px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors text-left truncate max-w-full cursor-pointer"
+                          title={preset}
+                        >
+                          {preset.split(':')[0]}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={onSaveExplanation}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all shadow-sm cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Explanation</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={onResetWorkflow}
-              className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded transition-all flex items-center gap-2 cursor-pointer shadow-md"
+              className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-md text-xs mt-2"
             >
-              <RotateCcw className="w-4 h-4" /> New Experiment
+              <RotateCcw className="w-3.5 h-3.5" /> New Experiment
             </button>
           </div>
         )}

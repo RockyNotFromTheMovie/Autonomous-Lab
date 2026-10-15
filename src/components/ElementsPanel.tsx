@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import Papa from 'papaparse';
 import { ElementData } from '../types';
-import { Table, Search, Brain, Upload, Sparkles } from 'lucide-react';
+import { Table, Search, Brain, Upload, Sparkles, X, XCircle, RotateCcw } from 'lucide-react';
 import { STANDARD_ELEMENTS } from '../data/standardElements';
 
 interface ElementsPanelProps {
@@ -9,6 +9,8 @@ interface ElementsPanelProps {
   onElementsLoaded: (elements: ElementData[], filename: string) => void;
   selectedElements: ElementData[];
   onToggleElement: (element: ElementData) => void;
+  onDeselectAll: () => void;
+  onDeselectElement: (element: ElementData) => void;
   onDesignPlan: () => void;
   isDesigning: boolean;
   onLog: (msg: string, type?: 'info' | 'llm' | 'hardware' | 'success' | 'error') => void;
@@ -19,6 +21,8 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
   onElementsLoaded,
   selectedElements,
   onToggleElement,
+  onDeselectAll,
+  onDeselectElement,
   onDesignPlan,
   isDesigning,
   onLog,
@@ -71,6 +75,7 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
 
   return (
     <div className="col-span-1 md:col-span-3 glass-panel rounded-xl flex flex-col overflow-hidden shadow-lg border border-slate-700/50">
+      {/* Top Header & Search Area */}
       <div className="bg-slate-800/80 p-4 border-b border-slate-700 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -114,22 +119,35 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
           />
         </div>
 
+        {/* Selection Status & Deselect option */}
         <div className="flex justify-between items-center text-xs text-slate-400 font-mono">
-          <span>
-            Selected:{' '}
-            <span
-              className={`font-bold ${
-                isValidCount
-                  ? 'text-emerald-400'
-                  : count > 5
-                  ? 'text-red-400'
-                  : 'text-white'
-              }`}
-            >
-              {count}
+          <div className="flex items-center gap-2">
+            <span>
+              Selected:{' '}
+              <span
+                className={`font-bold ${
+                  isValidCount
+                    ? 'text-emerald-400'
+                    : count > 5
+                    ? 'text-red-400'
+                    : 'text-white'
+                }`}
+              >
+                {count}
+              </span>
+              /5
             </span>
-            /5
-          </span>
+            {count > 0 && (
+              <button
+                onClick={onDeselectAll}
+                className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 font-mono transition-colors hover:underline cursor-pointer"
+                title="Deselect all chosen elements"
+              >
+                <X className="w-3 h-3" />
+                <span>Deselect</span>
+              </button>
+            )}
+          </div>
           <span
             className={`text-amber-400 text-[11px] ${
               isValidCount ? 'hidden' : 'block'
@@ -140,23 +158,70 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
         </div>
       </div>
 
+      {/* Selected Element Chips Bar with individual Deselect buttons */}
+      {selectedElements.length > 0 && (
+        <div className="bg-slate-900/90 px-3 py-2 border-b border-slate-700/80 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+            <span className="text-[10px] uppercase font-mono text-slate-500 shrink-0">Selected:</span>
+            {selectedElements.map((el) => (
+              <span
+                key={el.Symbol}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 text-xs font-mono group"
+              >
+                <span className="font-bold">{el.Symbol}</span>
+                <button
+                  type="button"
+                  onClick={() => onDeselectElement(el)}
+                  className="text-slate-400 hover:text-red-400 p-0.5 rounded transition-colors cursor-pointer"
+                  title={`Deselect ${el.Symbol} (${el.Name})`}
+                  aria-label={`Deselect ${el.Symbol}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={onDeselectAll}
+            className="text-[11px] text-red-400 hover:text-red-300 font-mono flex items-center gap-1 px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer"
+            title="Deselect all selected elements"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Clear</span>
+          </button>
+        </div>
+      )}
+
+      {/* Elements Table */}
       <div className="flex-1 overflow-auto custom-scrollbar relative">
         <table className="w-full text-left border-collapse text-xs">
           <thead className="bg-slate-800/90 sticky top-0 backdrop-blur z-10 text-slate-400 shadow-md">
             <tr>
               <th className="p-2 w-10 text-center">
-                <span className="sr-only">Select</span>
-                <span className="text-[10px] uppercase font-mono">Sel</span>
+                {count > 0 ? (
+                  <button
+                    type="button"
+                    onClick={onDeselectAll}
+                    className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-500/20 transition-colors cursor-pointer mx-auto block"
+                    title="Deselect all selected elements"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <span className="text-[10px] uppercase font-mono">Sel</span>
+                )}
               </th>
               <th className="p-2">Sym</th>
               <th className="p-2">Name</th>
               <th className="p-2">Block</th>
+              <th className="p-2 w-20 text-right">Option</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50">
             {elements.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-slate-500 font-mono">
+                <td colSpan={5} className="p-8 text-center text-slate-500 font-mono">
                   <div className="flex flex-col items-center gap-2">
                     <Upload className="w-6 h-6 text-slate-600 mb-1" />
                     <span>Please upload CSV to load elements.</span>
@@ -171,7 +236,7 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
               </tr>
             ) : filteredElements.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-slate-500">
+                <td colSpan={5} className="p-4 text-center text-slate-500">
                   No matches found.
                 </td>
               </tr>
@@ -182,7 +247,7 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
                   <tr
                     key={el.Symbol}
                     onClick={() => onToggleElement(el)}
-                    className={`hover:bg-slate-700/30 transition-colors cursor-pointer select-none ${
+                    className={`hover:bg-slate-700/30 transition-colors cursor-pointer select-none group ${
                       isSelected ? 'bg-sky-500/10' : ''
                     }`}
                   >
@@ -201,6 +266,33 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
                     <td className="p-2 text-slate-400 text-[11px]">
                       {el.GroupBlock || '-'}
                     </td>
+                    <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
+                      {isSelected ? (
+                        <button
+                          type="button"
+                          onClick={() => onDeselectElement(el)}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 transition-all cursor-pointer shadow-sm"
+                          title={`Deselect ${el.Symbol}`}
+                        >
+                          <X className="w-2.5 h-2.5" />
+                          <span>Deselect</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onToggleElement(el)}
+                          disabled={count >= 5}
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                            count >= 5
+                              ? 'text-slate-600 cursor-not-allowed'
+                              : 'text-slate-400 hover:text-sky-300 hover:bg-slate-700/50'
+                          }`}
+                          title={count >= 5 ? 'Maximum 5 elements' : `Select ${el.Symbol}`}
+                        >
+                          Select
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })
@@ -209,6 +301,7 @@ export const ElementsPanel: React.FC<ElementsPanelProps> = ({
         </table>
       </div>
 
+      {/* Action Footer */}
       <div className="p-3 bg-slate-800/80 border-t border-slate-700">
         <button
           onClick={onDesignPlan}

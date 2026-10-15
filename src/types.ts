@@ -31,6 +31,7 @@ export interface ExperimentRecord {
   synthesisPlan: string;
   characterizationPlan: string;
   outcome: ExperimentOutcome;
+  explanation?: string;
   timestamp: number;
 }
 

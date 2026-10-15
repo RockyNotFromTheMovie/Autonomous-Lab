@@ -9,6 +9,9 @@ import {
   Trash2,
   Filter,
   Eye,
+  AlertTriangle,
+  XCircle,
+  FileText,
 } from 'lucide-react';
 import { ExperimentRecord, ExperimentOutcome } from '../types';
 
@@ -172,6 +175,31 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
                       {rec.outcome}
                     </span>
                   </div>
+
+                  {/* Outcome Explanation for Partial Success or Failure */}
+                  {rec.explanation ? (
+                    <div
+                      className={`mt-2 p-2 rounded text-[11px] leading-relaxed border flex items-start gap-1.5 ${
+                        rec.outcome === 'Partial Success'
+                          ? 'bg-amber-950/30 border-amber-500/30 text-amber-200'
+                          : 'bg-red-950/30 border-red-500/30 text-red-200'
+                      }`}
+                    >
+                      {rec.outcome === 'Partial Success' ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                      )}
+                      <span className="line-clamp-2 italic font-sans">
+                        {rec.explanation}
+                      </span>
+                    </div>
+                  ) : (rec.outcome === 'Partial Success' || isFail) ? (
+                    <div className="mt-2 text-[10px] text-slate-500 italic flex items-center gap-1">
+                      <FileText className="w-3 h-3 text-slate-500" />
+                      <span>Click to input outcome explanation</span>
+                    </div>
+                  ) : null}
 
                   <p className="text-[10px] text-slate-500 mt-2 text-right flex items-center justify-end gap-1">
                     <Clock className="w-3 h-3" />

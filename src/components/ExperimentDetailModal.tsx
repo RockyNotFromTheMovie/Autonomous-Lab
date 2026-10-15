@@ -1,26 +1,59 @@
-import React from 'react';
-import { X, CheckCircle2, AlertTriangle, XCircle, Printer, Microscope, Copy, Check, Clock, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Printer,
+  Microscope,
+  Copy,
+  Check,
+  Clock,
+  Layers,
+  FileText,
+  Save,
+} from 'lucide-react';
 import { ExperimentRecord } from '../types';
 
 interface ExperimentDetailModalProps {
   record: ExperimentRecord | null;
   onClose: () => void;
-  onLoadElements?: (elements: string) => void;
+  onUpdateExplanation?: (recordId: string, explanation: string) => void;
 }
 
 export const ExperimentDetailModal: React.FC<ExperimentDetailModalProps> = ({
   record,
   onClose,
+  onUpdateExplanation,
 }) => {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
+  const [explanationText, setExplanationText] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    if (record) {
+      setExplanationText(record.explanation || '');
+      setIsSaved(false);
+    }
+  }, [record]);
 
   if (!record) return null;
 
   const handleCopy = () => {
-    const text = `Alloy: ${record.alloyName}\nElements: ${record.elements}\nOutcome: ${record.outcome}\n\nSynthesis Plan:\n${record.synthesisPlan}\n\nCharacterization Plan:\n${record.characterizationPlan}`;
+    const text = `Alloy: ${record.alloyName}\nElements: ${record.elements}\nOutcome: ${record.outcome}${
+      record.explanation ? `\nExplanation: ${record.explanation}` : ''
+    }\n\nSynthesis Plan:\n${record.synthesisPlan}\n\nCharacterization Plan:\n${record.characterizationPlan}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSaveExplanation = () => {
+    if (onUpdateExplanation && record) {
+      onUpdateExplanation(record.id, explanationText);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2500);
+    }
   };
 
   const isSuccess = record.outcome === 'Success';
@@ -30,6 +63,8 @@ export const ExperimentDetailModal: React.FC<ExperimentDetailModalProps> = ({
     : isFail
     ? 'text-red-400 border-red-500/30 bg-red-500/10'
     : 'text-amber-400 border-amber-500/30 bg-amber-500/10';
+
+  const isPartialOrFailure = record.outcome === 'Partial Success' || isFail;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
@@ -76,6 +111,48 @@ export const ExperimentDetailModal: React.FC<ExperimentDetailModalProps> = ({
               {record.outcome}
             </span>
           </div>
+
+          {/* Explanation Section for Partial Success or Failure */}
+          {isPartialOrFailure && (
+            <div
+              className={`p-4 rounded-xl border ${
+                record.outcome === 'Partial Success'
+                  ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                  : 'bg-red-950/20 border-red-500/40 text-red-200'
+              }`}
+            >
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2 font-semibold text-xs">
+                  <FileText className="w-4 h-4" />
+                  <span>Outcome Explanation & Diagnostic Root Cause:</span>
+                </div>
+                {isSaved && (
+                  <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Updated
+                  </span>
+                )}
+              </div>
+
+              <textarea
+                value={explanationText}
+                onChange={(e) => setExplanationText(e.target.value)}
+                placeholder={`Input explanation for ${record.outcome.toLowerCase()} (e.g., secondary phase precipitation, delamination, atomization mismatch)...`}
+                rows={3}
+                className="w-full bg-slate-900/90 text-xs text-white rounded-lg p-2.5 border border-slate-700 focus:outline-none focus:border-[#38bdf8] resize-none font-sans leading-relaxed mt-1"
+              />
+
+              <div className="mt-2.5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveExplanation}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all cursor-pointer shadow-sm"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Update Explanation</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/60">
             <span className="text-xs text-slate-400 block mb-1 uppercase font-mono tracking-wider">

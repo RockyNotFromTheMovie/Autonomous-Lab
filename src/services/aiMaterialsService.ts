@@ -105,3 +105,33 @@ function synthesizeMaterialsPlan(elements: ElementData[]): AIPlan {
     characterizationPlan,
   };
 }
+
+export function generateOutcomeExplanation(
+  outcome: 'Partial Success' | 'Failure',
+  elements: ElementData[],
+  alloyName: string
+): string {
+  const symbols = elements.map(e => e.Symbol);
+  const primary = symbols[0] || 'matrix';
+  const secondary = symbols[1] || 'dopant';
+
+  if (outcome === 'Partial Success') {
+    const explanations = [
+      `Micro-XRF mapping identified localized elemental segregation: ${primary}-rich secondary intermetallic clusters formed along grain boundaries, reducing targeted stoichiometry homogeneity by ~4.8 at%.`,
+      `Incomplete photothermal sintering: SEM imaging revealed high density in core regions but residual nanoporosity (12%) at printer swath interfaces between ${symbols.join(' and ')}.`,
+      `Metastable phase coexistence: Desired solid-solution crystal lattice formed, but secondary binary intermetallic precipitate of ${primary}-${secondary} observed under cross-sectional EDX.`,
+      `Slight stoichiometry drift during high-speed printing: volatile component (${secondary}) concentration dropped by 3.2% compared to precursor formulation target.`,
+    ];
+    return explanations[Math.floor(Math.random() * explanations.length)];
+  } else {
+    // Failure
+    const explanations = [
+      `Thermal expansion mismatch induced macro-cracking: severe delamination between the ${symbols.join('-')} alloy film and substrate observed post-sintering under FE-SEM.`,
+      `Extensive macroscopic phase separation: positive enthalpy of mixing (ΔH_mix > 18 kJ/mol) between ${primary} and ${secondary} prevented solid-solution formation, causing phase divergence.`,
+      `Precursor agglomeration during aerosol atomization: nozzle clogging caused uneven droplet dispersion, leading to non-uniform island growth rather than continuous thin film.`,
+      `Substrate oxidation and interfacial degradation: trace moisture contamination triggered uncontrollable oxide skin formation, suppressing metallic bonding.`,
+    ];
+    return explanations[Math.floor(Math.random() * explanations.length)];
+  }
+}
+
