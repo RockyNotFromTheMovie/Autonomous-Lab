@@ -23,6 +23,12 @@ export interface AIPlan {
 
 export type ExperimentOutcome = 'Success' | 'Partial Success' | 'Failure';
 
+export interface DiagnosticData {
+  anomaly: string;
+  evidence: string;
+  recommendation: string;
+}
+
 export interface ExperimentRecord {
   id: string;
   alloyName: string;
@@ -32,6 +38,7 @@ export interface ExperimentRecord {
   characterizationPlan: string;
   outcome: ExperimentOutcome;
   explanation?: string;
+  diagnostic?: DiagnosticData;
   timestamp: number;
 }
 

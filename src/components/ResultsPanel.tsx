@@ -176,30 +176,41 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
                     </span>
                   </div>
 
-                  {/* Outcome Explanation for Partial Success or Failure */}
-                  {rec.explanation ? (
+                  {/* Dedicated Diagnostic Explanation for Partial Success or Failure */}
+                  {(rec.outcome === 'Partial Success' || isFail) && (
                     <div
-                      className={`mt-2 p-2 rounded text-[11px] leading-relaxed border flex items-start gap-1.5 ${
+                      className={`mt-2.5 p-2.5 rounded-lg text-[11px] leading-relaxed border ${
                         rec.outcome === 'Partial Success'
-                          ? 'bg-amber-950/30 border-amber-500/30 text-amber-200'
-                          : 'bg-red-950/30 border-red-500/30 text-red-200'
+                          ? 'bg-amber-950/25 border-amber-500/40 text-amber-200'
+                          : 'bg-red-950/25 border-red-500/40 text-red-200'
                       }`}
                     >
-                      {rec.outcome === 'Partial Success' ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                      <div className="flex items-center gap-1.5 font-semibold text-[10.5px] uppercase font-mono tracking-wider mb-1">
+                        {rec.outcome === 'Partial Success' ? (
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        )}
+                        <span>Dedicated Diagnostic Report:</span>
+                      </div>
+
+                      {rec.diagnostic?.anomaly && (
+                        <p className="font-bold text-white text-[11px] mb-1">
+                          {rec.diagnostic.anomaly}
+                        </p>
                       )}
-                      <span className="line-clamp-2 italic font-sans">
-                        {rec.explanation}
-                      </span>
+
+                      <p className="italic text-slate-300 font-sans line-clamp-3 text-[11px] leading-normal">
+                        {rec.explanation || rec.diagnostic?.evidence || 'Diagnostic evaluation in progress.'}
+                      </p>
+
+                      {rec.diagnostic?.recommendation && (
+                        <p className="mt-1.5 text-[10px] text-emerald-300/90 font-mono bg-slate-900/60 p-1.5 rounded border border-slate-700/60 line-clamp-2">
+                          Fix: {rec.diagnostic.recommendation}
+                        </p>
+                      )}
                     </div>
-                  ) : (rec.outcome === 'Partial Success' || isFail) ? (
-                    <div className="mt-2 text-[10px] text-slate-500 italic flex items-center gap-1">
-                      <FileText className="w-3 h-3 text-slate-500" />
-                      <span>Click to input outcome explanation</span>
-                    </div>
-                  ) : null}
+                  )}
 
                   <p className="text-[10px] text-slate-500 mt-2 text-right flex items-center justify-end gap-1">
                     <Clock className="w-3 h-3" />

@@ -5,7 +5,7 @@ import { ElementsPanel } from './components/ElementsPanel';
 import { WorkflowPanel } from './components/WorkflowPanel';
 import { ResultsPanel } from './components/ResultsPanel';
 import { ExperimentDetailModal } from './components/ExperimentDetailModal';
-import { ElementData, AIPlan, ExperimentRecord, LogMessage, SimStage, ExperimentOutcome } from './types';
+import { ElementData, AIPlan, ExperimentRecord, LogMessage, SimStage, ExperimentOutcome, DiagnosticData } from './types';
 import { STANDARD_ELEMENTS } from './data/standardElements';
 import { generateAIPlan, generateOutcomeExplanation } from './services/aiMaterialsService';
 
@@ -29,7 +29,27 @@ const SEED_RECORDS: ExperimentRecord[] = [
     characterizationPlan: '1. XRF mapping stoichiometry Ti:Al:C ratio.\n2. SEM micrographs of laminated nanolayers showing basal plane sliding.',
     outcome: 'Partial Success',
     explanation: 'Partial phase decomposition observed: secondary TiC phase formed at grain boundaries due to non-stoichiometric carbon diffusion during sintering.',
+    diagnostic: {
+      anomaly: 'Grain Boundary Intermetallic Phase Precipitation',
+      evidence: 'Micro-XRF mapping detected ±4.2 at% Ti/C compositional drift; cross-sectional SEM revealed TiC clustering at grain boundaries.',
+      recommendation: 'Increase spark plasma sintering heating rate to 100°C/min to suppress grain boundary diffusion kinetics.'
+    },
     timestamp: Date.now() - 3600000 * 5,
+  },
+  {
+    id: 'seed-exp-103',
+    alloyName: 'Al80Fe10Sn10 (Immiscible Binary Cluster Matrix)',
+    elements: 'Al, Fe, Sn',
+    synthesisPlan: '1. Ultrasonic atomization of triethylene glycol chloride salts.\n2. Aerosol jet printing at 18 mm/s on alumina substrate.\n3. Flash lamp thermal annealing at 14 J/cm².',
+    characterizationPlan: '1. SEM cross-sectional examination of microstructure.\n2. Micro-XRF elemental distribution scan across 15x15 grid.',
+    outcome: 'Failure',
+    explanation: 'Thermal expansion mismatch and severe macroscopic phase immiscibility (positive mixing enthalpy ΔH_mix > 22 kJ/mol) between Fe and Sn caused extensive film delamination and droplet segregation.',
+    diagnostic: {
+      anomaly: 'Macroscopic Phase Immiscibility & Substrate Delamination',
+      evidence: 'FE-SEM micrographs showed complete phase divergence into discrete Fe-Sn droplet clusters; film completely peeled from alumina substrate.',
+      recommendation: 'Replace Sn with Ni or Co to achieve favorable negative mixing enthalpy with Fe and Al.'
+    },
+    timestamp: Date.now() - 3600000 * 8,
   }
 ];
 
@@ -47,6 +67,7 @@ export const App: React.FC = () => {
   const [simProgress, setSimProgress] = useState(0);
   const [simOutcome, setSimOutcome] = useState<ExperimentOutcome | null>(null);
   const [simExplanation, setSimExplanation] = useState<string>('');
+  const [simDiagnostic, setSimDiagnostic] = useState<DiagnosticData | null>(null);
   const [lastCreatedRecordId, setLastCreatedRecordId] = useState<string | null>(null);
   const [isExplanationSaved, setIsExplanationSaved] = useState<boolean>(false);
 
@@ -218,12 +239,23 @@ export const App: React.FC = () => {
     setSimStage('completed');
 
     let initialExplanation = '';
+    let initialDiagnostic: DiagnosticData | undefined = undefined;
+
     if (finalOutcome === 'Partial Success' || finalOutcome === 'Failure') {
-      initialExplanation = generateOutcomeExplanation(
+      const diagResult = generateOutcomeExplanation(
         finalOutcome,
         selectedElements,
         currentPlan.alloyName
       );
+      initialExplanation = diagResult.explanation;
+      initialDiagnostic = diagResult.diagnostic;
+      setSimDiagnostic(diagResult.diagnostic);
+
+      addLog(`[DIAGNOSTIC ANOMALY] ${diagResult.diagnostic.anomaly}`, 'error');
+      addLog(`[SEM/XRF EVIDENCE] ${diagResult.diagnostic.evidence}`, 'hardware');
+      addLog(`[REMEDIATION] ${diagResult.diagnostic.recommendation}`, 'info');
+    } else {
+      setSimDiagnostic(null);
     }
     setSimExplanation(initialExplanation);
     setIsExplanationSaved(false);
@@ -256,12 +288,13 @@ export const App: React.FC = () => {
       characterizationPlan: currentPlan.characterizationPlan,
       outcome: finalOutcome,
       explanation: initialExplanation,
+      diagnostic: initialDiagnostic,
       timestamp: Date.now(),
     };
 
     setLastCreatedRecordId(newRecordId);
     setRecords((prev) => [newRecord, ...prev]);
-    addLog('Record synchronized to database.', 'info');
+    addLog('Record synchronized to database with dedicated diagnostic.', 'info');
   };
 
   const handleResetWorkflow = () => {
@@ -270,6 +303,7 @@ export const App: React.FC = () => {
     setSimProgress(0);
     setSimOutcome(null);
     setSimExplanation('');
+    setSimDiagnostic(null);
     setLastCreatedRecordId(null);
     setIsExplanationSaved(false);
     addLog('Ready for new synthesis parameters.', 'info');
@@ -310,6 +344,7 @@ export const App: React.FC = () => {
           simProgress={simProgress}
           simOutcome={simOutcome}
           simExplanation={simExplanation}
+          simDiagnostic={simDiagnostic}
           onExplanationChange={setSimExplanation}
           onSaveExplanation={handleSaveCurrentExplanation}
           isExplanationSaved={isExplanationSaved}

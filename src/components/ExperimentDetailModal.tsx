@@ -12,6 +12,9 @@ import {
   Layers,
   FileText,
   Save,
+  ShieldAlert,
+  Activity,
+  ArrowRight,
 } from 'lucide-react';
 import { ExperimentRecord } from '../types';
 
@@ -117,38 +120,80 @@ export const ExperimentDetailModal: React.FC<ExperimentDetailModalProps> = ({
             <div
               className={`p-4 rounded-xl border ${
                 record.outcome === 'Partial Success'
-                  ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
-                  : 'bg-red-950/20 border-red-500/40 text-red-200'
+                  ? 'bg-amber-950/25 border-amber-500/40 text-amber-200'
+                  : 'bg-red-950/25 border-red-500/40 text-red-200'
               }`}
             >
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2 font-semibold text-xs">
-                  <FileText className="w-4 h-4" />
-                  <span>Outcome Explanation & Diagnostic Root Cause:</span>
+              <div className="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-700/60">
+                <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wide">
+                  {record.outcome === 'Partial Success' ? (
+                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <ShieldAlert className="w-4 h-4 text-red-400" />
+                  )}
+                  <span>Dedicated Diagnostic Report & Analysis</span>
                 </div>
                 {isSaved && (
                   <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Updated
+                    <Check className="w-3.5 h-3.5" /> Updated
                   </span>
                 )}
               </div>
+
+              {/* Structured Diagnostic Telemetry */}
+              {record.diagnostic && (
+                <div className="space-y-2 mb-3 bg-slate-900/80 p-3 rounded-lg border border-slate-700/80 text-xs">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+                      Identified Anomaly / Defect Mode:
+                    </span>
+                    <p className="text-white font-medium">
+                      {record.diagnostic.anomaly}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold flex items-center gap-1">
+                      <Activity className="w-3 h-3 text-sky-400" />
+                      Characterization Evidence:
+                    </span>
+                    <p className="text-slate-300 font-mono text-[11px] leading-relaxed">
+                      {record.diagnostic.evidence}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold flex items-center gap-1">
+                      <ArrowRight className="w-3 h-3 text-emerald-400" />
+                      Actionable Remediation:
+                    </span>
+                    <p className="text-emerald-300/90 text-[11px] leading-relaxed">
+                      {record.diagnostic.recommendation}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <label className="block text-[11px] text-slate-300 font-medium mb-1">
+                Diagnostic Explanation & Root Cause:
+              </label>
 
               <textarea
                 value={explanationText}
                 onChange={(e) => setExplanationText(e.target.value)}
                 placeholder={`Input explanation for ${record.outcome.toLowerCase()} (e.g., secondary phase precipitation, delamination, atomization mismatch)...`}
                 rows={3}
-                className="w-full bg-slate-900/90 text-xs text-white rounded-lg p-2.5 border border-slate-700 focus:outline-none focus:border-[#38bdf8] resize-none font-sans leading-relaxed mt-1"
+                className="w-full bg-slate-900/95 text-xs text-white rounded-lg p-2.5 border border-slate-700 focus:outline-none focus:border-[#38bdf8] resize-none font-sans leading-relaxed"
               />
 
               <div className="mt-2.5 flex justify-end">
                 <button
                   type="button"
                   onClick={handleSaveExplanation}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all cursor-pointer shadow-sm"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all cursor-pointer shadow-sm"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Update Explanation</span>
+                  <span>Update Diagnostic Explanation</span>
                 </button>
               </div>
             </div>

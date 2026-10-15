@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Bot,
   Network,
@@ -16,9 +16,11 @@ import {
   FileText,
   Save,
   Check,
-  Sparkles,
+  Activity,
+  ArrowRight,
+  ShieldAlert,
 } from 'lucide-react';
-import { ElementData, AIPlan, SimStage, ExperimentOutcome, LogMessage } from '../types';
+import { ElementData, AIPlan, SimStage, ExperimentOutcome, LogMessage, DiagnosticData } from '../types';
 
 interface WorkflowPanelProps {
   currentPlan: AIPlan | null;
@@ -27,6 +29,7 @@ interface WorkflowPanelProps {
   simProgress: number;
   simOutcome: ExperimentOutcome | null;
   simExplanation: string;
+  simDiagnostic?: DiagnosticData | null;
   onExplanationChange: (explanation: string) => void;
   onSaveExplanation: () => void;
   isExplanationSaved: boolean;
@@ -57,6 +60,7 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
   simProgress,
   simOutcome,
   simExplanation,
+  simDiagnostic,
   onExplanationChange,
   onSaveExplanation,
   isExplanationSaved,
@@ -256,47 +260,98 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
               <p className="text-xs text-slate-400 max-w-xs">
                 {simOutcome === 'Success'
                   ? 'Experiment concluded successfully. Homogeneous alloy synthesized.'
-                  : 'Experiment concluded with diagnostic flags. Record saved to database.'}
+                  : `Experiment resulted in ${simOutcome.toLowerCase()}. Dedicated diagnostic explanation generated and logged below.`}
               </p>
             </div>
 
-            {/* Explanation Input for Partial Success or Failure */}
+            {/* Dedicated Diagnostic Explanation Panel */}
             {isPartialOrFailure && (
               <div
                 className={`w-full text-left rounded-xl p-3.5 border transition-all ${
                   simOutcome === 'Partial Success'
-                    ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
-                    : 'bg-red-950/20 border-red-500/40 text-red-200'
+                    ? 'bg-amber-950/30 border-amber-500/50 text-amber-200'
+                    : 'bg-red-950/30 border-red-500/50 text-red-200'
                 }`}
               >
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-1.5 font-semibold text-xs">
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Explanation of Outcome ({simOutcome}):</span>
+                {/* Header Badge */}
+                <div className="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-700/60">
+                  <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wide">
+                    {simOutcome === 'Partial Success' ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    ) : (
+                      <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+                    )}
+                    <span>Dedicated Diagnostic Explanation</span>
                   </div>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                      simOutcome === 'Partial Success'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        : 'bg-red-500/20 text-red-300 border-red-500/40'
+                    }`}
+                  >
+                    Required Report
+                  </span>
+                </div>
+
+                {/* Structured Diagnostic Findings */}
+                {simDiagnostic && (
+                  <div className="space-y-2 mb-3 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700/80 text-[11px]">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
+                        Identified Defect / Anomaly:
+                      </span>
+                      <p className="text-white font-medium">
+                        {simDiagnostic.anomaly}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold flex items-center gap-1">
+                        <Activity className="w-3 h-3 text-sky-400" />
+                        Micro-XRF & SEM Evidence:
+                      </span>
+                      <p className="text-slate-300 font-mono text-[10.5px] leading-relaxed">
+                        {simDiagnostic.evidence}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold flex items-center gap-1">
+                        <ArrowRight className="w-3 h-3 text-emerald-400" />
+                        Recommended Corrective Action:
+                      </span>
+                      <p className="text-emerald-300/90 text-[10.5px] leading-relaxed">
+                        {simDiagnostic.recommendation}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[11px] font-semibold flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Diagnostic Explanation Text (Editable):</span>
+                  </span>
                   {isExplanationSaved && (
                     <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Saved
+                      <Check className="w-3 h-3" /> Synchronized
                     </span>
                   )}
                 </div>
 
-                <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
-                  Provide or refine the laboratory diagnostic root cause for why this run resulted in {simOutcome.toLowerCase()}:
-                </p>
-
                 <textarea
                   value={simExplanation}
                   onChange={(e) => onExplanationChange(e.target.value)}
-                  placeholder={`Input explanation for ${simOutcome.toLowerCase()} (e.g. phase separation, thermal delamination, stoichiometry variance)...`}
+                  placeholder={`Input detailed diagnostic explanation for ${simOutcome.toLowerCase()}...`}
                   rows={3}
-                  className="w-full bg-slate-900/90 text-xs text-white rounded-lg p-2.5 border border-slate-700 focus:outline-none focus:border-[#38bdf8] resize-none font-sans leading-relaxed"
+                  className="w-full bg-slate-900/95 text-xs text-white rounded-lg p-2.5 border border-slate-700 focus:outline-none focus:border-[#38bdf8] resize-none font-sans leading-relaxed"
                 />
 
                 {/* Quick Presets */}
                 <div className="mt-2.5">
                   <span className="text-[10px] text-slate-400 uppercase font-mono block mb-1">
-                    Quick Suggestion Presets:
+                    Quick Preset Diagnostic Reasons:
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {(simOutcome === 'Partial Success' ? PARTIAL_PRESETS : FAILURE_PRESETS).map(
@@ -305,7 +360,7 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                           key={idx}
                           type="button"
                           onClick={() => onExplanationChange(preset)}
-                          className="text-[10px] px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors text-left truncate max-w-full cursor-pointer"
+                          className="text-[10px] px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors text-left truncate max-w-full cursor-pointer"
                           title={preset}
                         >
                           {preset.split(':')[0]}
@@ -319,10 +374,10 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                   <button
                     type="button"
                     onClick={onSaveExplanation}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all shadow-sm cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 transition-all shadow-sm cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>Save Explanation</span>
+                    <span>Save Diagnostic Explanation</span>
                   </button>
                 </div>
               </div>

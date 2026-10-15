@@ -1,4 +1,4 @@
-import { ElementData, AIPlan } from '../types';
+import { ElementData, AIPlan, DiagnosticData } from '../types';
 
 export async function generateAIPlan(elements: ElementData[]): Promise<AIPlan> {
   const elementsToSend = elements.map(el => ({
@@ -106,32 +106,94 @@ function synthesizeMaterialsPlan(elements: ElementData[]): AIPlan {
   };
 }
 
+export interface OutcomeDiagnosticResult {
+  explanation: string;
+  diagnostic: DiagnosticData;
+}
+
 export function generateOutcomeExplanation(
   outcome: 'Partial Success' | 'Failure',
   elements: ElementData[],
   alloyName: string
-): string {
+): OutcomeDiagnosticResult {
   const symbols = elements.map(e => e.Symbol);
   const primary = symbols[0] || 'matrix';
   const secondary = symbols[1] || 'dopant';
 
   if (outcome === 'Partial Success') {
-    const explanations = [
-      `Micro-XRF mapping identified localized elemental segregation: ${primary}-rich secondary intermetallic clusters formed along grain boundaries, reducing targeted stoichiometry homogeneity by ~4.8 at%.`,
-      `Incomplete photothermal sintering: SEM imaging revealed high density in core regions but residual nanoporosity (12%) at printer swath interfaces between ${symbols.join(' and ')}.`,
-      `Metastable phase coexistence: Desired solid-solution crystal lattice formed, but secondary binary intermetallic precipitate of ${primary}-${secondary} observed under cross-sectional EDX.`,
-      `Slight stoichiometry drift during high-speed printing: volatile component (${secondary}) concentration dropped by 3.2% compared to precursor formulation target.`,
+    const diagnosticOptions: OutcomeDiagnosticResult[] = [
+      {
+        diagnostic: {
+          anomaly: 'Localized Elemental Segregation along Grain Boundaries',
+          evidence: `Micro-XRF 10x10 mapping revealed ${primary}-rich secondary intermetallic cluster clustering. Targeted stoichiometry drifted by ±4.8 at% across the central printer swath.`,
+          recommendation: `Increase ultrasonic atomization carrier gas flow by 12% and apply a 200 ms post-sintering thermal soak to dissolve metastable boundary clusters.`,
+        },
+        explanation: `Micro-XRF mapping identified localized elemental segregation: ${primary}-rich secondary intermetallic clusters formed along grain boundaries, causing targeted stoichiometry to drift by ~4.8 at%. Ultrasonic carrier gas flow adjustment and thermal soaking recommended for subsequent print cycle.`,
+      },
+      {
+        diagnostic: {
+          anomaly: 'Residual Inter-Swath Porosity (12.4%)',
+          evidence: `Field-Emission SEM cross-sectional micrographs showed dense grain coalescence in core tracks, but 12.4% residual void volume at the boundary between ${symbols.join(' and ')} deposition tracks.`,
+          recommendation: `Increase xenon flash sintering pulse fluence from 14.5 J/cm² to 16.2 J/cm² and decrease print hatch spacing from 75 μm to 60 μm to ensure track overlap consolidation.`,
+        },
+        explanation: `Incomplete photothermal sintering: SEM imaging revealed high density in core regions but residual nanoporosity (12.4%) at printer swath interfaces between ${symbols.join(' and ')}. Increasing flash sintering pulse fluence to 16.2 J/cm² advised.`,
+      },
+      {
+        diagnostic: {
+          anomaly: 'Metastable Binary Phase Coexistence',
+          evidence: `Cross-sectional EDX line scan detected unwanted binary intermetallic precipitation of ${primary}-${secondary} alongside the primary solid solution matrix.`,
+          recommendation: `Accelerate post-pulse thermal quenching rate (>10⁴ K/s) under cryogenic argon purge to kinetically trap the uniform high-entropy solid-solution phase.`,
+        },
+        explanation: `Metastable phase coexistence: Desired solid-solution crystal lattice formed, but secondary binary intermetallic precipitates of ${primary}-${secondary} nucleated upon cooling. Rapid quenching advised to kinetically freeze the single-phase state.`,
+      },
+      {
+        diagnostic: {
+          anomaly: 'Stoichiometry Drift from Volatile Component Loss',
+          evidence: `Micro-XRF quantified a 3.5% depletion of ${secondary} relative to precursor ink formulation target due to localized thermal over-exposure during flash annealing.`,
+          recommendation: `Compensate precursor ink formulation with +4.0 wt% excess ${secondary} or attenuate peak flash duration from 1.8 ms to 1.4 ms.`,
+        },
+        explanation: `Slight stoichiometry drift during high-speed printing: volatile component (${secondary}) concentration dropped by 3.5% due to transient thermal over-exposure. Precursor re-balancing advised.`,
+      },
     ];
-    return explanations[Math.floor(Math.random() * explanations.length)];
+    return diagnosticOptions[Math.floor(Math.random() * diagnosticOptions.length)];
   } else {
     // Failure
-    const explanations = [
-      `Thermal expansion mismatch induced macro-cracking: severe delamination between the ${symbols.join('-')} alloy film and substrate observed post-sintering under FE-SEM.`,
-      `Extensive macroscopic phase separation: positive enthalpy of mixing (ΔH_mix > 18 kJ/mol) between ${primary} and ${secondary} prevented solid-solution formation, causing phase divergence.`,
-      `Precursor agglomeration during aerosol atomization: nozzle clogging caused uneven droplet dispersion, leading to non-uniform island growth rather than continuous thin film.`,
-      `Substrate oxidation and interfacial degradation: trace moisture contamination triggered uncontrollable oxide skin formation, suppressing metallic bonding.`,
+    const diagnosticOptions: OutcomeDiagnosticResult[] = [
+      {
+        diagnostic: {
+          anomaly: 'Substrate Delamination & Thermal Shock Macro-Cracking',
+          evidence: `FE-SEM top-down and cross-sectional micrographs revealed complete longitudinal film peeling and extensive micro-crack networks throughout the ${symbols.join('-')} matrix.`,
+          recommendation: `Preheat substrate to 220°C prior to aerosol deposition and introduce a 5 nm titanium adhesion buffer layer to mitigate thermal expansion mismatch.`,
+        },
+        explanation: `Thermal expansion mismatch induced macro-cracking: severe delamination between the ${symbols.join('-')} alloy film and substrate observed post-sintering under FE-SEM. Substrate preheating and adhesion buffer layer required.`,
+      },
+      {
+        diagnostic: {
+          anomaly: 'Severe Macroscopic Phase Immiscibility',
+          evidence: `Backscattered electron SEM imaging and EDX elemental mapping confirmed complete phase segregation into discrete binary droplets with zero mutual solid solubility (ΔH_mix > +22 kJ/mol).`,
+          recommendation: `Incompatible thermodynamic mixing pair (${primary} vs ${secondary}). Replace ${secondary} with an element exhibiting negative or near-zero mixing enthalpy with ${primary}.`,
+        },
+        explanation: `Extensive macroscopic phase separation: positive enthalpy of mixing (ΔH_mix > 22 kJ/mol) between ${primary} and ${secondary} prevented solid-solution formation, resulting in droplet divergence. Elemental substitution required.`,
+      },
+      {
+        diagnostic: {
+          anomaly: 'Aerosol Jet Precursor Agglomeration & Nozzle Clogging',
+          evidence: `High-speed in-situ optical monitoring and SEM topography showed severe ink droplet pooling, non-uniform crater defects, and interrupted deposition tracks.`,
+          recommendation: `Increase surfactant dispersant (PVP) concentration to 1.2 wt% and reduce precursor salt molarity by 25% to prevent colloidal agglomeration.`,
+        },
+        explanation: `Precursor agglomeration during aerosol atomization: nozzle clogging caused uneven droplet dispersion, leading to non-uniform island growth rather than continuous thin film. Ink re-dispersion protocol needed.`,
+      },
+      {
+        diagnostic: {
+          anomaly: 'Interfacial Oxidation & Metallic Bonding Suppression',
+          evidence: `EDX spectroscopy confirmed severe oxygen contamination (>28 at% O) throughout the synthesized film, preventing metallic percolation and inter-particle sintering.`,
+          recommendation: `Purge print chamber to < 5 ppm O₂ and verify seal integrity of the inert argon shroud envelope prior to laser initiation.`,
+        },
+        explanation: `Interfacial oxidation and degradation: trace atmospheric contamination triggered spontaneous metal oxide skin formation across nanoparticle surfaces, suppressing metallic bonding. Environmental seal check required.`,
+      },
     ];
-    return explanations[Math.floor(Math.random() * explanations.length)];
+    return diagnosticOptions[Math.floor(Math.random() * diagnosticOptions.length)];
   }
 }
+
 
